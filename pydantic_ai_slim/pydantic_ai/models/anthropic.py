@@ -852,16 +852,20 @@ def _map_usage(
     else:
         assert_never(message)
 
+    response_data = dict(model=model, usage=existing_usage)
     # In streaming, usage appears in different events.
     # The values are cumulative, meaning new values should replace existing ones entirely.
     details: dict[str, int] = (existing_usage.details if existing_usage else {}) | {
-        key: value for key, value in response_usage.model_dump().items() if isinstance(value, int)
+        key: value
+        for key, value in response_usage.model_dump().items()
+        if key not in {'prompt_tokens', 'completion_tokens', 'input_tokens', 'output_tokens', 'total_tokens'}
+        if isinstance(value, int)
     }
 
     # Note: genai-prices already extracts cache_creation_input_tokens and cache_read_input_tokens
     # from the Anthropic response and maps them to cache_write_tokens and cache_read_tokens
     return usage.RequestUsage.extract(
-        dict(model=model, usage=details),
+        response_data,
         provider=provider,
         provider_url=provider_url,
         provider_fallback='anthropic',
